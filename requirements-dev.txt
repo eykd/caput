@@ -1,0 +1,13 @@
+-r requirements-test.txt
+black==19.3b0
+Fabric==2.5.0
+pdbpp==0.10.2
+isort[requirements]==4.3.21
+pre-commit==2.4.0
+pytest-profiling==1.7.0
+pytest-xdist==1.32.0
+pytest-watch==4.2.0
+seed-isort-config==2.1.1
+tox==3.15.0
+versioneer==0.18
+watchdog==0.10.2
