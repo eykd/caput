@@ -2,9 +2,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import funcy as fn
-
 import yaml
-
 
 try:
     from . import _version
@@ -27,26 +25,24 @@ def read_config(filepath, defaults=None, encoding=DEFAULT_ENCODING):
             get_shadow_config_name(filepath).read_text(encoding=encoding),
             defaults=defaults,
         )
-    else:
-        return read_config_header(filepath, defaults=defaults, encoding=encoding)
+    return read_config_header(filepath, defaults=defaults, encoding=encoding)
 
 
 def read_config_header(filepath, defaults=None, encoding=DEFAULT_ENCODING):
     filepath = Path(filepath)
     if not has_config_header(filepath):
         return defaults.copy() if defaults else {}
-    else:
-        with open(filepath, mode='r', encoding=DEFAULT_ENCODING) as fi:
-            header = ''.join(
-                fn.takewhile(
-                    fn.none_fn(
-                        fn.rpartial(str.startswith, '---\n'),
-                        fn.rpartial(str.startswith, '...\n'),
-                    ),
-                    fn.rest(fi),
-                )
+    with open(filepath, encoding=DEFAULT_ENCODING) as fi:
+        header = ''.join(
+            fn.takewhile(
+                fn.none_fn(
+                    fn.rpartial(str.startswith, '---\n'),
+                    fn.rpartial(str.startswith, '...\n'),
+                ),
+                fn.rest(fi),
             )
-        return parse_config(header, defaults)
+        )
+    return parse_config(header, defaults)
 
 
 def read_contents(filepath, encoding=DEFAULT_ENCODING):
@@ -56,10 +52,10 @@ def read_contents(filepath, encoding=DEFAULT_ENCODING):
             with open(filepath, mode='rb') as fi:
                 return fi.read()
         else:
-            with open(filepath, mode='r', encoding=encoding) as fi:
+            with open(filepath, encoding=encoding) as fi:
                 return fi.read()
     else:
-        with open(filepath, mode='r', encoding=encoding) as fi:
+        with open(filepath, encoding=encoding) as fi:
             return ''.join(
                 fn.rest(
                     fn.dropwhile(
