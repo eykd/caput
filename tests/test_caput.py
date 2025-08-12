@@ -180,6 +180,11 @@ def test_it_should_parse_a_config(
     assert result == merged_data
 
 
+def test_it_should_return_false_if_file_does_not_exist(tmpdir: Path) -> None:
+    nonexistent_file = tmpdir / 'nonexistent.txt'
+    assert caput.has_config_header(nonexistent_file) is False
+
+
 def test_it_should_merge_dicts(
     defaults: dict[str, Any], config_data: dict[str, Any], merged_data: dict[str, Any]
 ) -> None:
