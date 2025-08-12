@@ -21,7 +21,7 @@ dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
     "funcy",
-    "pyyaml",
+    "ruamel.yaml",
 ]
 
 [project.urls]

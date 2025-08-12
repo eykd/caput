@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import funcy as fn
-import yaml
+from ruamel.yaml import YAML
 
 try:
     from . import _version
@@ -265,7 +265,8 @@ def parse_config(text: str, defaults: dict[str, Any] | None = None) -> dict[str,
         {'title': 'My Article', 'author': 'John', 'draft': False}
 
     """
-    config = yaml.safe_load(text) or {}
+    yaml = YAML(typ='safe', pure=True)
+    config = yaml.load(text) or {}
     return merge_dicts(defaults, config) if defaults else config
 
 
