@@ -1,11 +1,14 @@
 #!/bin/sh
 set -e
 set -x
-pytest \
-    --failed-first \
-    --new-first \
-    --exitfirst \
-    --flake8 \
-    --cov=src \
-    --cov-branch \
-    --no-cov-on-fail $@
+
+# Automatically reformat code, but ignore breakpoint():
+uv run ruff check --fix --ignore T100
+uv run ruff format
+
+uv run python -m pytest \
+   --failed-first \
+   --exitfirst \
+   --cov=src \
+   --cov-branch \
+   --no-cov-on-fail $@
