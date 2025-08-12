@@ -15,26 +15,26 @@ def tmpdir():
 
 @pytest.fixture
 def config_data():
-    return {"foo": {"bar": {"baz": "blah"}, "things": [4, 5, 6]}, "brine": "salty"}
+    return {'foo': {'bar': {'baz': 'blah'}, 'things': [4, 5, 6]}, 'brine': 'salty'}
 
 
 @pytest.fixture
 def defaults():
     return {
-        "foo": {"bar": {"boo": "bah"}, "things": [1, 2, 3], "banana": "fruit"},
-        "brine": None,
+        'foo': {'bar': {'boo': 'bah'}, 'things': [1, 2, 3], 'banana': 'fruit'},
+        'brine': None,
     }
 
 
 @pytest.fixture
 def merged_data():
     return {
-        "foo": {
-            "bar": {"baz": "blah", "boo": "bah"},
-            "things": [4, 5, 6],
-            "banana": "fruit",
+        'foo': {
+            'bar': {'baz': 'blah', 'boo': 'bah'},
+            'things': [4, 5, 6],
+            'banana': 'fruit',
         },
-        "brine": "salty",
+        'brine': 'salty',
     }
 
 
@@ -45,43 +45,43 @@ def serialized_data(config_data):
 
 @pytest.fixture
 def header(serialized_data):
-    return f"---\n{serialized_data}\n---" ""
+    return f'---\n{serialized_data}\n---'
 
 
 @pytest.fixture
 def content():
-    return "blah\n"
+    return 'blah\n'
 
 
 @pytest.fixture
 def content_bytes():
-    return b"\xa01\xa02\xa03\xa04\xa05"
+    return b'\xa01\xa02\xa03\xa04\xa05'
 
 
 @pytest.fixture
 def fp_w_head(tmpdir, header, content):
-    fp = tmpdir / "foo.html"
-    fp.write_text(f"{header}\n{content}")
+    fp = tmpdir / 'foo.html'
+    fp.write_text(f'{header}\n{content}')
     return fp
 
 
 @pytest.fixture
 def fp_wo_head(tmpdir, content):
-    fp = tmpdir / "foo.html"
-    fp.write_text(f"{content}")
+    fp = tmpdir / 'foo.html'
+    fp.write_text(f'{content}')
     return fp
 
 
 @pytest.fixture
 def fp_wo_head_bytes(tmpdir, content_bytes):
-    fp = tmpdir / "foo.jpeg"
+    fp = tmpdir / 'foo.jpeg'
     fp.write_bytes(content_bytes)
     return fp
 
 
 @pytest.fixture
 def fp_shadow(tmpdir, fp_wo_head_bytes, serialized_data):
-    fp = tmpdir / f"{fp_wo_head_bytes.stem}.yml"
+    fp = tmpdir / f'{fp_wo_head_bytes.stem}.yml'
     fp.write_text(serialized_data)
     return fp
 
@@ -143,8 +143,8 @@ def test_it_should_return_false_if_a_binary_file_has_no_header(fp_wo_head_bytes)
 
 
 def test_it_should_get_a_shadow_config_name(tmpdir):
-    fp = tmpdir / "foo.jpeg"
-    expected = tmpdir / "foo.yml"
+    fp = tmpdir / 'foo.jpeg'
+    expected = tmpdir / 'foo.yml'
     result = caput.get_shadow_config_name(fp)
     assert result == expected
 

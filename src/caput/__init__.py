@@ -18,7 +18,7 @@ except (ImportError, AttributeError):  # pragma: no cover
     except importlib.metadata.PackageNotFoundError:
         __version__ = '0.0.0'
 
-DEFAULT_ENCODING = "utf-8"
+DEFAULT_ENCODING = 'utf-8'
 
 
 def read_config(filepath, defaults=None, encoding=DEFAULT_ENCODING):
@@ -36,12 +36,12 @@ def read_config_header(filepath, defaults=None, encoding=DEFAULT_ENCODING):
     if not has_config_header(filepath):
         return defaults.copy() if defaults else {}
     else:
-        with open(filepath, mode="r", encoding=DEFAULT_ENCODING) as fi:
-            header = "".join(
+        with open(filepath, mode='r', encoding=DEFAULT_ENCODING) as fi:
+            header = ''.join(
                 fn.takewhile(
                     fn.none_fn(
-                        fn.rpartial(str.startswith, "---\n"),
-                        fn.rpartial(str.startswith, "...\n"),
+                        fn.rpartial(str.startswith, '---\n'),
+                        fn.rpartial(str.startswith, '...\n'),
                     ),
                     fn.rest(fi),
                 )
@@ -53,19 +53,19 @@ def read_contents(filepath, encoding=DEFAULT_ENCODING):
     filepath = Path(filepath)
     if not has_config_header(filepath):
         if encoding is None:
-            with open(filepath, mode="rb") as fi:
+            with open(filepath, mode='rb') as fi:
                 return fi.read()
         else:
-            with open(filepath, mode="r", encoding=encoding) as fi:
+            with open(filepath, mode='r', encoding=encoding) as fi:
                 return fi.read()
     else:
-        with open(filepath, mode="r", encoding=encoding) as fi:
-            return "".join(
+        with open(filepath, mode='r', encoding=encoding) as fi:
+            return ''.join(
                 fn.rest(
                     fn.dropwhile(
                         fn.none_fn(
-                            fn.rpartial(str.startswith, "---\n"),
-                            fn.rpartial(str.startswith, "...\n"),
+                            fn.rpartial(str.startswith, '---\n'),
+                            fn.rpartial(str.startswith, '...\n'),
                         ),
                         fn.rest(fi),
                     )
@@ -76,20 +76,20 @@ def read_contents(filepath, encoding=DEFAULT_ENCODING):
 def has_config_header(filepath):
     filepath = Path(filepath)
     if filepath.is_file():
-        with open(filepath, mode="rb") as fi:
-            return fi.read(3) == b"---"
+        with open(filepath, mode='rb') as fi:
+            return fi.read(3) == b'---'
     else:
         return False
 
 
-def has_shadow_config(filepath, extension="yml"):
+def has_shadow_config(filepath, extension='yml'):
     sh_filepath = get_shadow_config_name(filepath, extension)
     return sh_filepath.exists()
 
 
-def get_shadow_config_name(filepath, extension="yml"):
+def get_shadow_config_name(filepath, extension='yml'):
     filepath = Path(filepath)
-    return filepath.parent / f"{filepath.stem}.{extension}"
+    return filepath.parent / f'{filepath.stem}.{extension}'
 
 
 def parse_config(text, defaults=None):
