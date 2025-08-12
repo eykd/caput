@@ -190,3 +190,206 @@ def test_it_should_merge_dicts(
 ) -> None:
     result = caput.merge_dicts(defaults, config_data)
     assert result == merged_data
+
+
+class TestIsTextFile:
+    def test_markdown_file_is_text(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'test.md'
+        assert caput.is_text_file(filepath) is True
+
+    def test_json_file_is_text(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'test.json'
+        assert caput.is_text_file(filepath) is True
+
+    def test_yaml_file_is_text(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'test.yml'
+        assert caput.is_text_file(filepath) is True
+
+    def test_python_file_is_text(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'test.py'
+        assert caput.is_text_file(filepath) is True
+
+    def test_image_file_is_not_text(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'test.png'
+        assert caput.is_text_file(filepath) is False
+
+    def test_unknown_extension_is_not_text(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'test.unknown'
+        assert caput.is_text_file(filepath) is False
+
+
+class TestWriteConfigHeader:
+    def test_write_header_to_new_file(
+        self, tmpdir: Path, config_data: dict[str, Any]
+    ) -> None:
+        filepath = tmpdir / 'new.md'
+        caput.write_config_header(filepath, config_data)
+
+        assert filepath.exists()
+        result = caput.read_config(filepath)
+        assert result == config_data
+
+        content = caput.read_contents(filepath)
+        assert content == ''
+
+    def test_write_header_to_existing_file_without_header(
+        self, tmpdir: Path, config_data: dict[str, Any], content: str
+    ) -> None:
+        filepath = tmpdir / 'existing.md'
+        filepath.write_text(content)
+
+        caput.write_config_header(filepath, config_data)
+
+        result = caput.read_config(filepath)
+        assert result == config_data
+
+        result_content = caput.read_contents(filepath)
+        assert result_content == content
+
+    def test_write_header_to_existing_file_with_header(
+        self, fp_w_head: Path, defaults: dict[str, Any], content: str
+    ) -> None:
+        new_config = {'new': 'data', 'another': 'value'}
+        caput.write_config_header(fp_w_head, new_config)
+
+        result = caput.read_config(fp_w_head)
+        assert result == new_config
+
+        result_content = caput.read_contents(fp_w_head)
+        assert result_content == content
+
+
+class TestWriteContents:
+    def test_write_plain_text_content(self, tmpdir: Path) -> None:
+        filepath = tmpdir / 'plain.txt'
+        content = 'This is plain content.'
+
+        caput.write_contents(filepath, content)
+
+        assert filepath.exists()
+        result = filepath.read_text()
+        assert result == content
+        assert not caput.has_config_header(filepath)
+
+    def test_write_text_content_with_config(
+        self, tmpdir: Path, config_data: dict[str, Any]
+    ) -> None:
+        filepath = tmpdir / 'with_config.md'
+        content = 'This is content with metadata.'
+
+        caput.write_contents(filepath, content, config=config_data)
+
+        assert filepath.exists()
+        result_config = caput.read_config(filepath)
+        assert result_config == config_data
+
+        result_content = caput.read_contents(filepath)
+        assert result_content == content
+
+    def test_write_binary_content(self, tmpdir: Path, content_bytes: bytes) -> None:
+        filepath = tmpdir / 'binary.bin'
+
+        caput.write_contents(filepath, content_bytes, encoding=None)
+
+        assert filepath.exists()
+        result = filepath.read_bytes()
+        assert result == content_bytes
+
+    def test_write_binary_content_with_config(
+        self, tmpdir: Path, content_bytes: bytes, config_data: dict[str, Any]
+    ) -> None:
+        filepath = tmpdir / 'binary_with_config.bin'
+
+        caput.write_contents(filepath, content_bytes, config=config_data, encoding=None)
+
+        assert filepath.exists()
+        result = filepath.read_bytes()
+        assert result == content_bytes
+
+        # Should create shadow config
+        assert caput.has_shadow_config(filepath)
+        result_config = caput.read_config(filepath)
+        assert result_config == config_data
+
+
+class TestWriteConfig:
+    def test_write_config_to_new_text_file(
+        self, tmpdir: Path, config_data: dict[str, Any]
+    ) -> None:
+        filepath = tmpdir / 'new.md'
+
+        caput.write_config(filepath, config_data)
+
+        assert filepath.exists()
+        assert caput.has_config_header(filepath)
+        result = caput.read_config(filepath)
+        assert result == config_data
+
+    def test_write_config_to_new_binary_file(
+        self, tmpdir: Path, config_data: dict[str, Any]
+    ) -> None:
+        filepath = tmpdir / 'new.png'
+
+        caput.write_config(filepath, config_data)
+
+        assert filepath.exists()
+        assert caput.has_shadow_config(filepath)
+        result = caput.read_config(filepath)
+        assert result == config_data
+
+    def test_write_config_to_existing_text_file_without_config(
+        self, tmpdir: Path, config_data: dict[str, Any], content: str
+    ) -> None:
+        filepath = tmpdir / 'existing.md'
+        filepath.write_text(content)
+
+        caput.write_config(filepath, config_data)
+
+        assert caput.has_config_header(filepath)
+        result = caput.read_config(filepath)
+        assert result == config_data
+
+        result_content = caput.read_contents(filepath)
+        assert result_content == content
+
+    def test_write_config_to_existing_binary_file_without_config(
+        self, tmpdir: Path, config_data: dict[str, Any], content_bytes: bytes
+    ) -> None:
+        filepath = tmpdir / 'existing.png'
+        filepath.write_bytes(content_bytes)
+
+        caput.write_config(filepath, config_data)
+
+        assert caput.has_shadow_config(filepath)
+        result = caput.read_config(filepath)
+        assert result == config_data
+
+        result_content = filepath.read_bytes()
+        assert result_content == content_bytes
+
+    def test_write_config_to_existing_file_with_header(
+        self, fp_w_head: Path, defaults: dict[str, Any], content: str
+    ) -> None:
+        new_config = {'updated': 'config', 'new_field': 123}
+
+        caput.write_config(fp_w_head, new_config)
+
+        result = caput.read_config(fp_w_head)
+        assert result == new_config
+
+        result_content = caput.read_contents(fp_w_head)
+        assert result_content == content
+
+    def test_write_config_to_existing_file_with_shadow_config(
+        self, fp_wo_head_bytes: Path, fp_shadow: Path, config_data: dict[str, Any]
+    ) -> None:
+        new_config = {'updated': 'shadow_config', 'version': 2}
+
+        caput.write_config(fp_wo_head_bytes, new_config)
+
+        result = caput.read_config(fp_wo_head_bytes)
+        assert result == new_config
+
+        # Original file content should be unchanged
+        original_content = fp_wo_head_bytes.read_bytes()
+        assert original_content  # Should still exist

@@ -1,17 +1,21 @@
 """Caput: Python library for easy file metadata handling.
 
-This module provides utilities for reading metadata from files using YAML headers
-(front matter) or sidecar configuration files. It supports both text files with
-YAML headers and binary files with shadow configuration files.
+This module provides utilities for reading and writing metadata from files using
+YAML headers (front matter) or sidecar configuration files. It supports both text
+files with YAML headers and binary files with shadow configuration files.
 
-The main entry point is the read_config() function which automatically detects
-whether to read from a YAML header or a shadow file.
+The main entry points are read_config() and write_config() functions which
+automatically detect whether to use YAML headers or shadow files.
 
 Example:
-    Basic usage for reading file metadata:
+    Basic usage for reading and writing file metadata:
 
+    >>> # Reading metadata
     >>> config = read_config('document.md')
     >>> print(config.get('title', 'Untitled'))
+
+    >>> # Writing metadata
+    >>> write_config('article.md', {'title': 'My Article', 'author': 'John'})
 
     With defaults:
 
@@ -20,6 +24,7 @@ Example:
 
 """
 
+import mimetypes
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -310,3 +315,281 @@ def merge_dicts(
                 dict_a[key] = dict_b[key]
 
     return dict_a
+
+
+def is_text_file(filepath: str | Path) -> bool:
+    """Determine if a file should be treated as text based on its mimetype.
+
+    Uses the mimetypes library to guess the file type and determines whether
+    it should be treated as a text file (suitable for YAML headers) or binary
+    file (requiring shadow config files).
+
+    Args:
+        filepath: Path to the file to check.
+
+    Returns:
+        True if the file should be treated as text, False for binary files.
+
+    Example:
+        >>> is_text_file('document.md')  # True
+        >>> is_text_file('image.png')  # False
+        >>> is_text_file('data.json')  # True
+
+    """
+    filepath = Path(filepath)
+
+    # Common text file extensions that mimetypes might not recognize
+    text_extensions = {
+        '.yml',
+        '.yaml',
+        '.md',
+        '.markdown',
+        '.txt',
+        '.py',
+        '.js',
+        '.ts',
+        '.css',
+        '.html',
+        '.htm',
+        '.xml',
+        '.json',
+        '.csv',
+        '.ini',
+        '.cfg',
+        '.conf',
+        '.log',
+        '.rst',
+        '.tex',
+        '.sql',
+        '.sh',
+        '.bash',
+        '.zsh',
+        '.fish',
+        '.ps1',
+        '.bat',
+        '.cmd',
+        '.dockerfile',
+        '.gitignore',
+        '.gitattributes',
+        '.editorconfig',
+        '.toml',
+        '.lock',
+    }
+
+    if filepath.suffix.lower() in text_extensions:
+        return True
+
+    mimetype, _ = mimetypes.guess_type(str(filepath))
+
+    if mimetype is None:
+        return False
+
+    # Common text file patterns
+    text_types = {
+        'text/',
+        'application/json',
+        'application/xml',
+        'application/yaml',
+        'application/x-yaml',
+        'application/javascript',
+        'application/typescript',
+    }
+
+    return any(mimetype.startswith(prefix) for prefix in text_types)
+
+
+def write_config(
+    filepath: str | Path,
+    config: dict[str, Any],
+    encoding: str = DEFAULT_ENCODING,
+) -> None:
+    """Write configuration to file header or shadow file.
+
+    This is the main entry point for writing metadata. It automatically determines
+    whether to write as a YAML header (for text files) or as a shadow configuration
+    file (for binary files) based on the file type.
+
+    Args:
+        filepath: Path to the file to write configuration to.
+        config: Configuration data to write.
+        encoding: Text encoding to use when writing files.
+
+    Example:
+        >>> # For text files, writes YAML header
+        >>> write_config('article.md', {'title': 'My Article', 'author': 'John'})
+
+        >>> # For binary files, creates shadow config
+        >>> write_config('image.png', {'title': 'Photo', 'date': '2023-01-01'})
+
+    """
+    filepath = Path(filepath)
+
+    # Determine write strategy based on existing state and file type
+    if filepath.exists():
+        if has_config_header(filepath):
+            # File exists with header, update it
+            write_config_header(filepath, config, encoding=encoding)
+        elif has_shadow_config(filepath):
+            # File exists with shadow config, update it
+            _write_shadow_config(filepath, config, encoding=encoding)
+        else:
+            # File exists but no config, decide based on file type
+            if is_text_file(filepath):
+                write_config_header(filepath, config, encoding=encoding)
+            else:
+                _write_shadow_config(filepath, config, encoding=encoding)
+    else:
+        # File doesn't exist, decide based on file type
+        if is_text_file(filepath):
+            write_config_header(filepath, config, encoding=encoding)
+        else:
+            # Create empty file and shadow config
+            filepath.touch()
+            _write_shadow_config(filepath, config, encoding=encoding)
+
+
+def write_config_header(
+    filepath: str | Path,
+    config: dict[str, Any],
+    encoding: str = DEFAULT_ENCODING,
+) -> None:
+    """Write configuration as YAML header in file.
+
+    Writes YAML front matter to the beginning of a file. If the file already
+    has a YAML header, it replaces it. If the file doesn't exist, it creates
+    it with the header and empty content.
+
+    Args:
+        filepath: Path to the file to write the header to.
+        config: Configuration data to write as YAML header.
+        encoding: Text encoding to use when writing the file.
+
+    Example:
+        >>> # Creates or updates YAML header
+        >>> write_config_header(
+        ...     'article.md',
+        ...     {'title': 'My Article', 'author': 'John Doe', 'date': '2023-01-01'},
+        ... )
+
+    """
+    filepath = Path(filepath)
+
+    # Get existing content (without header)
+    if filepath.exists():
+        existing_content = read_contents(filepath, encoding=encoding)
+    else:
+        existing_content = ''
+
+    # Generate YAML header
+    yaml = YAML()
+    yaml.width = 4096  # Prevent line wrapping
+    yaml.map_indent = 2
+    yaml.sequence_indent = 4
+
+    from io import StringIO
+
+    yaml_stream = StringIO()
+    yaml.dump(config, yaml_stream)
+    yaml_content = yaml_stream.getvalue().strip()
+
+    # Write file with header and content
+    with filepath.open('w', encoding=encoding) as fo:
+        fo.write('---\n')
+        fo.write(yaml_content)
+        fo.write('\n---\n')
+        if existing_content:
+            fo.write(existing_content)
+
+
+def write_contents(
+    filepath: str | Path,
+    content: str | bytes,
+    config: dict[str, Any] | None = None,
+    encoding: str | None = DEFAULT_ENCODING,
+) -> None:
+    """Write file contents with optional configuration header.
+
+    Writes content to a file, optionally including YAML front matter metadata.
+    Supports both text and binary content.
+
+    Args:
+        filepath: Path to the file to write.
+        content: Content to write to the file.
+        config: Optional configuration data to write as YAML header (text files only).
+        encoding: Text encoding to use. If None, writes as binary.
+
+    Example:
+        >>> # Write text file with header
+        >>> write_contents(
+        ...     'article.md', 'This is the content.', config={'title': 'My Article'}
+        ... )
+
+        >>> # Write plain text file
+        >>> write_contents('plain.txt', 'Just content.')
+
+        >>> # Write binary file
+        >>> write_contents('data.bin', b'binary data', encoding=None)
+
+    """
+    filepath = Path(filepath)
+
+    if encoding is None:
+        # Binary mode
+        if config is not None:
+            # Binary files can't have headers, write shadow config instead
+            _write_shadow_config(filepath, config, encoding=DEFAULT_ENCODING)
+        with filepath.open('wb') as fo:
+            fo.write(content)
+    else:
+        # Text mode
+        if config is not None:
+            # Write with YAML header
+            yaml = YAML()
+            yaml.width = 4096
+            yaml.map_indent = 2
+            yaml.sequence_indent = 4
+
+            from io import StringIO
+
+            yaml_stream = StringIO()
+            yaml.dump(config, yaml_stream)
+            yaml_content = yaml_stream.getvalue().strip()
+
+            with filepath.open('w', encoding=encoding) as fo:
+                fo.write('---\n')
+                fo.write(yaml_content)
+                fo.write('\n---\n')
+                fo.write(content)
+        else:
+            # Write plain content
+            with filepath.open('w', encoding=encoding) as fo:
+                fo.write(content)
+
+
+def _write_shadow_config(
+    filepath: str | Path,
+    config: dict[str, Any],
+    extension: str = 'yml',
+    encoding: str = DEFAULT_ENCODING,
+) -> None:
+    """Write configuration to shadow config file.
+
+    Internal helper function to write configuration data to a sidecar file.
+    Creates a shadow configuration file with the same stem as the original file.
+
+    Args:
+        filepath: Path to the primary file.
+        config: Configuration data to write.
+        extension: File extension for the shadow config file (without dot).
+        encoding: Text encoding to use when writing the shadow file.
+
+    """
+    shadow_path = get_shadow_config_name(filepath, extension)
+
+    yaml = YAML()
+    yaml.width = 4096
+    yaml.map_indent = 2
+    yaml.sequence_indent = 4
+
+    with shadow_path.open('w', encoding=encoding) as fo:
+        yaml.dump(config, fo)
