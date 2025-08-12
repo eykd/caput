@@ -5,12 +5,18 @@ import funcy as fn
 
 import yaml
 
-from ._version import get_versions
 
-__version__ = get_versions()["version"]
+try:
+    from . import _version
 
-del get_versions
+    __version__ = _version.version
+except (ImportError, AttributeError):  # pragma: no cover
+    import importlib.metadata
 
+    try:
+        __version__ = importlib.metadata.version(__name__)
+    except importlib.metadata.PackageNotFoundError:
+        __version__ = '0.0.0'
 
 DEFAULT_ENCODING = "utf-8"
 
