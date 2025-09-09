@@ -1,6 +1,6 @@
 [project]
 name = "caput"
-description = "Generative grammars for idea generation."
+description = "Manage file metadata with YAML front-matter."
 readme = "README.rst"
 authors = [
     { name = "David Eyk", email = "david@worldsenoughstudios.com" }
